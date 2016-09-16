@@ -2,7 +2,7 @@
 
 import sys
 import os
-import getopt
+import argparse
 import requests
 import logging
 from xml.dom.minidom import parseString as parse_xml
@@ -20,10 +20,10 @@ class XsdDownloader:
         self.out_dir = out_dir
 
     def download(self):
-        internal = self.out_dir + "/" + self.XSD_INTERNAL_DIR
-        if not os.path.isdir(internal):
-            logging.debug("Creating dir %s" % internal)
-            os.mkdir(internal)
+        internal_dir_path = self.out_dir + "/" + self.XSD_INTERNAL_DIR
+        if not os.path.isdir(internal_dir_path):
+            logging.debug("Creating dir %s" % internal_dir_path)
+            os.mkdir(internal_dir_path)
 
         self.__download_xsd(self.xsd_url)
 
@@ -87,36 +87,26 @@ class Application:
     def __init__(self):
         self.xsd_url = None
         self.out_dir = None
-        logging.basicConfig(format=Application.LOGGER_FORMAT, level=logging.INFO)
 
     def configure(self, argv):
-        try:
-            opts, args = getopt.getopt(argv[1:], "hu:o:v", ["help", "xsd-url=", "output-dir=", "verbose"])
-        except getopt.GetoptError:
-            self.__usage(argv)
-            sys.exit(2)
+        parser = argparse.ArgumentParser()
+        parser.description = "Download XSD with all remote references and replace them with local files"
+        parser.add_argument("-u", "--xsd-url", required=True, type=str, help="URL to XML schema")
+        parser.add_argument("-o", "--output-dir", help="Output directory")
+        parser.add_argument("-v", "--verbose", action="store_true")
 
-        for opt, arg in opts:
-            if opt == '-h':
-                self.__usage(argv)
-                sys.exit(0)
-            elif opt in ("-u", "--xsd-url"):
-                self.xsd_url = arg
-            elif opt in ("-o", "--output"):
-                self.out_dir = os.path.realpath(arg)
-            elif opt in ("-v", "--verbose"):
-                logging.basicConfig(format=Application.LOGGER_FORMAT, level=logging.DEBUG)
+        args = parser.parse_args(argv[1:])
 
-        if not self.xsd_url:
-            self.__usage(argv)
-            sys.exit(1)
+        self.xsd_url = args.xsd_url
+        self.out_dir = args.output_dir
+        if args.verbose:
+            logging.basicConfig(format=Application.LOGGER_FORMAT, level=logging.DEBUG)
+        else:
+            logging.basicConfig(format=Application.LOGGER_FORMAT, level=logging.INFO)
 
     def run(self):
         downloader = XsdDownloader(self.xsd_url, self.out_dir)
         downloader.download()
-
-    def __usage(self, argv):
-        print "%s --xsd-url <XSD_URL> --output-dir <OUTPUT_DIR>" % argv[0]
 
 
 if __name__ == "__main__":
