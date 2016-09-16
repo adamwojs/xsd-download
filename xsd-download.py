@@ -4,6 +4,7 @@ import sys
 import os
 import getopt
 import requests
+import logging
 from xml.dom.minidom import parseString as parse_xml
 
 
@@ -21,6 +22,7 @@ class XsdDownloader:
     def download(self):
         inner_dir_path = self.out_dir + "/" + self.XSD_INTERNAL_DIR
         if not os.path.isdir(inner_dir_path):
+            logging.debug("Creating dir %s" % inner_dir_path)
             os.mkdir(inner_dir_path)
 
         self.__download_xsd(self.xsd_url)
@@ -45,7 +47,7 @@ class XsdDownloader:
 
     @staticmethod
     def __download_url(url):
-        print "Downloading %s " % url
+        logging.info("Downloading %s " % url)
         return requests.get(url).text.encode('UTF-8')
 
     def __get_local_name(self, url):
@@ -61,15 +63,17 @@ class XsdDownloader:
         return "/".join(segments)
 
     def __resolve_imports(self, dom, is_root=False):
+        logging.debug("Resolving <xsd:import />")
         self.__do_resolve(dom.getElementsByTagNameNS(self.XSD_NS, "import"), is_root)
 
     def __resolve_includes(self, dom, is_root=False):
+        logging.debug("Resolving <xsd:include />")
         self.__do_resolve(dom.getElementsByTagNameNS(self.XSD_NS, "include"), is_root)
 
     def __do_resolve(self, externals, is_root):
+        logging.debug("Found %d references" % len(externals))
         for external in externals:
             schema_location = external.attributes["schemaLocation"]
-
             local_path = self.__download_xsd(schema_location.value)
             if is_root:
                 local_path = self.XSD_INTERNAL_DIR + "/" + local_path
@@ -78,13 +82,16 @@ class XsdDownloader:
 
 
 class Application:
+    LOGGER_FORMAT = "%(levelname)s: %(message)s"
+
     def __init__(self):
         self.xsd_url = None
         self.out_dir = None
+        logging.basicConfig(format=Application.LOGGER_FORMAT, level=logging.INFO)
 
     def configure(self, argv):
         try:
-            opts, args = getopt.getopt(argv[1:], "hu:o:", ["help", "xsd-url=", "output-dir="])
+            opts, args = getopt.getopt(argv[1:], "hu:o:v", ["help", "xsd-url=", "output-dir=", "verbose"])
         except getopt.GetoptError:
             self.__usage(argv)
             sys.exit(2)
@@ -97,6 +104,8 @@ class Application:
                 self.xsd_url = arg
             elif opt in ("-o", "--output"):
                 self.out_dir = os.path.realpath(arg)
+            elif opt in ("-v", "--verbose"):
+                logging.basicConfig(format=Application.LOGGER_FORMAT, level=logging.DEBUG)
 
         if not self.xsd_url:
             self.__usage(argv)
