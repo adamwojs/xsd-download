@@ -20,10 +20,10 @@ class XsdDownloader:
         self.out_dir = out_dir
 
     def download(self):
-        inner_dir_path = self.out_dir + "/" + self.XSD_INTERNAL_DIR
-        if not os.path.isdir(inner_dir_path):
-            logging.debug("Creating dir %s" % inner_dir_path)
-            os.mkdir(inner_dir_path)
+        internal = self.out_dir + "/" + self.XSD_INTERNAL_DIR
+        if not os.path.isdir(internal):
+            logging.debug("Creating dir %s" % internal)
+            os.mkdir(internal)
 
         self.__download_xsd(self.xsd_url)
 
